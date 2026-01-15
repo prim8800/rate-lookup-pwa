@@ -1,65 +1,109 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
+
+type Rate = { client: string; region: string; classification: string; bill: number; pay: number };
 
 export default function Home() {
+  const [client, setClient] = useState("");
+  const [region, setRegion] = useState("");
+  const [classification, setClassification] = useState("");
+  const [results, setResults] = useState<Rate[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function fetchRates() {
+    setLoading(true);
+    const qs = new URLSearchParams();
+    if (client) qs.set("client", client);
+    if (region) qs.set("region", region);
+    if (classification) qs.set("classification", classification);
+
+    const res = await fetch(`/api/rates?${qs.toString()}`);
+    const data = await res.json();
+    setResults(data.results ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchRates();
+  }, [client, region, classification]);
+
+  const copy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    alert("Copied");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main style={{ padding: 16, maxWidth: 720, margin: "0 auto", fontFamily: "system-ui" }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Rate Lookup</h1>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        <select value={client} onChange={(e) => setClient(e.target.value)} style={selectStyle}>
+          <option value="">Client (All)</option>
+          <option value="ONEOK">ONEOK</option>
+        </select>
+
+        <select value={region} onChange={(e) => setRegion(e.target.value)} style={selectStyle}>
+          <option value="">Region (All)</option>
+          <option value="TX">TX</option>
+        </select>
+
+        <select value={classification} onChange={(e) => setClassification(e.target.value)} style={selectStyle}>
+          <option value="">Classification (All)</option>
+          <option value="CWI">CWI</option>
+          <option value="Chief">Chief</option>
+        </select>
+      </div>
+
+      <div style={{ marginTop: 14, opacity: 0.8 }}>
+        {loading ? "Loading…" : `${results.length} result(s)`}
+      </div>
+
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        {results.map((r, i) => (
+          <div key={i} style={cardStyle}>
+            <div style={{ fontWeight: 800 }}>
+              {r.client} • {r.region} • {r.classification}
+            </div>
+            <div style={{ marginTop: 6 }}>
+              Bill: <b>${r.bill}</b> &nbsp; Pay: <b>${r.pay}</b>
+            </div>
+            <button
+              onClick={() =>
+                copy(
+                  `Client: ${r.client}\nRegion: ${r.region}\nClass: ${r.classification}\nBill: $${r.bill}\nPay: $${r.pay}`
+                )
+              }
+              style={btnStyle}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+              Copy
+            </button>
+          </div>
+        ))}
+      </div>
+    </main>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  padding: 12,
+  borderRadius: 14,
+  border: "1px solid #e5e7eb",
+  fontSize: 16,
+};
+
+const cardStyle: React.CSSProperties = {
+  padding: 14,
+  borderRadius: 18,
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+};
+
+const btnStyle: React.CSSProperties = {
+  marginTop: 10,
+  padding: "10px 12px",
+  borderRadius: 14,
+  border: "1px solid #111827",
+  background: "#111827",
+  color: "white",
+  fontSize: 16,
+};
